@@ -1,0 +1,11 @@
+My own project is contained in the file
+
+reg_model_project.Rmd
+
+movies_codebook.htm contains the explanation of what is in the dataset movies.
+
+All the graphs are stored in the pdf files and in the comments in main R file
+there is a reference to which file to open if you want to see the graph 
+without running the R code
+
+The dataset is contained in the eaca_movies.Rdata provided by Coursera
