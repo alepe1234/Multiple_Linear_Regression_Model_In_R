@@ -1,0 +1,428 @@
+---
+title: "Multiple Linear Regression and Prediction study on a sample movie dataset"
+author: "Alessandro Pelliccioni"
+date: June 22, 2024
+---
+
+## 1. Introduction
+
+This project was developed during the study of the Coursera course "Linear
+regression and modelling" by Duke University. The dataset in use is a sample
+dataset prepared by the course teacher and based on information about movies
+taken from Rotten Tomatoes and IMDB. The movies in the dataset were choosen 
+randomply. This project tries to understand what attributes make a movie 
+popular. As part of this project we will make Exploratory data analysis, 
+modeling and prediction.
+Prediction will be done by picking a movie from year 2016, a year which is not
+in the database, and use our developed model to predict the rating of this movie.
+We will also quantify the uncertainity around this prediction using and appropriate
+interval.
+
+### 1.1. Research questions
+
+As we will see in the dataset description, the dataset contains three variables
+that describe the rating of the movie. From the IMDB database we have a single
+rating variable (numeric from 1 to 9), and from the Rotten Tomatoes database 
+a critic's score (numeric variable from 1 to 100) and am audience 
+score (numeric variable from 1 to 100).
+
+The research question is the following:
+Is it possible to predict the three different score values, using a multi 
+linear model based on some of the other variables?
+It is then interesting to compare which explanatory variables predict IMDB
+movie rating and which predict best ratings on Rotten Tomatoes for critics
+and for public.
+
+## 2. Dataset Description
+
+The data set comprises 651 randomly sampled movies produced and released before
+2016. Dataset eaca_movies is a Coursera extract of the original material published
+on https://www.rottentomatoes.com/ and https://www.imdb.com/.
+
+Description (source rotten tomatoe's website) Rotten Tomatoes and the Tomatometer
+score are the world’s most trusted recommendation resources for quality 
+entertainment. As the leading online aggregator of movie and TV show reviews 
+from critics, we provide fans with a comprehensive guide to what’s Fresh – and
+what’s Rotten – in theaters and at home. And the Tomatometer is just the 
+beginning. We also serve movie and TV fans with original editorial content on
+our site and through social channels, produce fun and informative video series,
+and hold live events for fans across the country, with our ‘Your Opinion Sucks’ 
+live shows. If you’re an entertainment fan looking for a recommendation, or to
+share an opinion, you’ve come to the right place. 
+
+The Tomatometer score – based on the opinions of hundreds of film and 
+television critics – is a trusted measurement of critical recommendation for 
+millions of fans.
+Certified Fresh status is a special distinction awarded to the best-reviewed 
+movies and TV shows. In order to qualify, movies or TV shows must have a 
+consistent Tomatometer score of 75% or higher.
+When at least 60% of reviews for a movie or TV show are positive, a red tomato
+is displayed to indicate its Fresh status. 
+When less than 60% of reviews for a movie or TV show are positive, a green 
+splat is displayed to indicate its Rotten status.
+When there is no Tomatometer® score available, which could be because the 
+Title hasn’t released yet or there are not enough ratings to generate a score. 
+
+The Audience Score, denoted by a popcorn bucket, represents the percentage of
+users who have rated a movie or TV show positively. With films for which we 
+can verify users have bought a ticket, the default Audience Score we show is 
+made up of “Verified Ratings,” which represents the percentage of users who 
+have rated a movie or TV show positively who we can verify bought a ticket; it
+is displayed once enough of those Verified Ratings are in to form a score.
+When at least 60% of users give a movie or TV show a star rating of 3.5 or 
+higher, a full popcorn bucket is displayed to indicate its Fresh status.
+When less than 60% of users give a movie or TV show a star rating of 3.5 or 
+higher, a tipped over popcorn bucket is displayed to indicate its Rotten 
+status.
+When there is no Audience Score available, which could be because the Title 
+hasn’t released yet or there are not enough ratings to generate a score. 
+
+Description (source IMDB website):
+IMDb started in 1990 as a hobby project by an international group of movie and
+TV fans. IMDb is now the worldâ€™s most popular and authoritative source for 
+movie, TV and celebrity content.
+
+The information in IMDb comes from various sources. While they actively gather
+information from and verify items with studios and filmmakers, the bulk of our
+information is submitted by people in the industry and visitors like you.
+In addition to using as many sources as we can, the data goes through 
+consistency checks to ensure it's as accurate and reliable as possible. 
+However, there's absolutely no substitute for an international team of 
+entertainment fans with an encyclopedic knowledge of trivia and a large 
+assortment of reference works (and we include in this group many of our loyal 
+contributors). The sources of information include, but are not limited to, 
+on-screen credits, press kits, official bios, autobiographies, and interviews.
+
+The data set is comprised of 651 randomly sampled movies produced and released
+from 1970 to 2014. According to IMDb, there are 9,962 movies released between
+1972 and 2014 so that the 10% condition (9,962*10% = 996) is met. Since the 
+sampling size is large enough and less than 10% of the total movie population,
+we can assume that the sampled entries are independent from each other.
+We can safely assume that the statistical inferences we conclude from this 
+sample are generalizable to the entire movie pupulation. This is an observational
+study and we can provide only a hint to a correlation between the variables, 
+non a proof of casual relationship.
+
+### 2.1 Load packages and data
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library('GGally')       # library to create plots
+library('grid')         # arrange plots 
+library('gridExtra')    # arrange plots
+```
+
+```{r load-data}
+load("eaca_movies.Rdata")
+```
+
+We see from the "movies_codebook" file that there are 32 variables stored for each
+movie, including some that we believe won't affect the score forecasting model,
+like for example date of when the movie was released on DVD, url of movie page on
+IMDB, and so on. Given the small data sample, actor's or director's name, may not
+be good predictors as same actor may appear only few times in the dataset.
+So we decide to create a smaller dataset with only the followin variables,
+discard the rest, and also the rows that cotain null values for any of those
+variables.
+
+1 - title: Title of movie
+2 - title_type: Type of movie (Documentary, Feature Film, TV Movie)
+3 - genre: Genre of movie (Action & Adventure, Comedy, Documentary, Drama, Horror, Mystery & Suspense, Other)
+4 - mpaa_rating: MPAA rating of the movie (G, PG, PG-13, R, Unrated)
+5 - imdb_rating: Rating on IMDB
+6 - critics_score: Critics score on Rotten Tomatoes
+7 - audience_score: Audience score on Rotten Tomatoes
+8 - best_pic_nom: Whether or not the movie was nominated for a best picture Oscar (no, yes)
+9 - best_pic_win: Whether or not the movie won a best picture Oscar (no, yes)
+10 - best_actor_win: Whether or not one of the main actors in the movie ever won an Oscar (no, yes)
+11 - best_actress win: Whether or not one of the main actresses in the movie ever won an Oscar (no, yes)
+12 - best_dir_win: Whether or not the director of the movie ever won an Oscar (no, yes) 
+13 - top200_box: Whether or not the movie is in the Top 200 Box Office list on BoxOfficeMojo (no, yes)
+
+```{r load-data}
+movies %>%
+	filter(!is.na(title) & !is.na(title_type) & !is.na(genre) & !is.na(mpaa_rating)
+		& !is.na(imdb_rating) & !is.na(critics_score)
+		& !is.na(audience_score) & !is.na(best_pic_nom) 
+		& !is.na(best_pic_win) & !is.na(best_actor_win)
+		& !is.na(best_actress_win) & !is.na(best_dir_win)
+		& !is.na(top200_box)) %>%
+	select(title, title_type, genre, mpaa_rating, imdb_rating, critics_score,
+	audience_score, best_pic_nom, best_pic_win, best_actor_win,
+	best_actress_win, best_dir_win, top200_box) -> mov
+
+dim(mov)
+```
+
+We see that the original database contained 651 rows and 32 columns, now we have
+reduced the columns to 13, but the number of rows is still 651. So the columns we
+have chosen to include in the study didn't have any missing value.
+
+
+## 3 Exploratory data analysis
+
+Let's have a quick look at how the IMDB score and the two Rotten Tomatoes scores
+are distribuited:
+
+```{r}
+summary(mov$imdb_rating)
+hist(mov$imdb_rating)
+```
+
+IMDB scores are left schewed with a median of 6.6 and 50% of values in the
+interval between 5.9 and 7.3. Min value is 1.9 and max is 9.0. Thought the
+allowed score range is between 1 and 10. (see pdf file histo_imdb_rating.pdf)
+
+```{r}
+summary(mov$critics_score)
+hist(mov$critics_score)
+```
+
+Rotten Tomatoes critics score range between 1 and 100, the histogram is far less
+left schewed than the previous one. Median is 6.1, IRQ betweeb 33 and 83, and
+min is 1, max is 100. (see pdf file histo_critics_score.pdf).
+
+
+```{r}
+summary(mov$audience_score)
+hist(mov$audience_score)
+```
+
+Rotten Tomatoes audience score is similar to critics score, left schewed, but with
+less movies in the two far extremes. Median is 65, IRQ (46, 80), min 11 and
+max 97. (see file histo_audience_score.pdf)
+
+Let's plot the imdb_rating, against the candidates for explanatory variables
+
+```{r}
+p1 <- ggplot(mov, aes(	, fill = title_type))
+p1 <- p1 + geom_density (alpha = 0.2) + labs(title = "Distribution of IMDB score vs. title_type") 
+p1 <- p1 + labs(x = "title_type", y = "Density")
+
+p2 <- ggplot(mov, aes(imdb_rating, fill = genre))
+p2 <- p2 + geom_density (alpha = 0.2) + labs(title = "Distribution of IMDB score vs. genre") 
+p2 <- p2 + labs(x = "Genre", y = "Density")
+
+p3 <- ggplot(mov, aes(imdb_rating, fill = mpaa_rating))
+p3 <- p3 + geom_density (alpha = 0.2) + labs(title = "Distribution of IMDB score vs. mpaa_rating")
+p3 <- p3 + labs(x = "MPAA rating", y = "Density")
+
+p4 <- ggplot(mov, aes(imdb_rating, fill = best_pic_nom))
+p4 <- p4 + geom_density (alpha = 0.2) + labs(title = "Distribution of IMDB score vs. best_pic_nom") 
+p4 <- p4 + labs(x = "Best movie nomination", y = "Density")
+
+p5 <- ggplot(mov, aes(imdb_rating, fill = best_pic_win))
+p5 <- p5 + geom_density (alpha = 0.2) + labs(title = "Distribution of IMDB score vs. best_pic_win") 
+p5 <- p5 + labs(x = "Best movie winner", y = "Density")
+
+p6 <- ggplot(mov, aes(imdb_rating, fill = best_actor_win))
+p6 <- p6 + geom_density (alpha = 0.2) + labs(title = "Distribution of IMDB score vs. best_actor_win") 
+p6 <- p6 + labs(x = "Best actor winner", y = "Density")
+
+p7 <- ggplot(mov, aes(imdb_rating, fill = best_actress_win))
+p7 <- p7 + geom_density (alpha = 0.2) + labs(title = "Distribution of IMDB score vs. best_actress win") 
+p7 <- p7 + labs(x = "Best actress nomination", y = "Density")
+
+p8 <- ggplot(mov, aes(imdb_rating, fill = best_dir_win))
+p8 <- p8 + geom_density (alpha = 0.2) + labs(title = "Distribution of IMDB score vs. best_dir_win") 
+p8 <- p8 + labs(x = "Best director nomination", y = "Density")
+
+p9 <- ggplot(mov, aes(imdb_rating, fill = top200_box))
+p9 <- p9 + geom_density (alpha = 0.2) + labs(title = "Distribution of IMDB score vs. top200_box") 
+p9 <- p9 + labs(x = "Top 200 Box Office list", y = "Density")
+
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8, p9,  ncol = 2)
+
+```
+
+Let's plot the critics_score, against the candidates for explanatory variables
+
+```{r}
+p1 <- ggplot(mov, aes(critics_score, fill = title_type))
+p1 <- p1 + geom_density (alpha = 0.2) + labs(title = "Distribution of critics score vs. title_type") 
+p1 <- p1 + labs(x = "title_type", y = "Density")
+
+p2 <- ggplot(mov, aes(critics_score, fill = genre))
+p2 <- p2 + geom_density (alpha = 0.2) + labs(title = "Distribution of critics score vs. genre") 
+p2 <- p2 + labs(x = "Genre", y = "Density")
+
+p3 <- ggplot(mov, aes(critics_score, fill = mpaa_rating))
+p3 <- p3 + geom_density (alpha = 0.2) + labs(title = "Distribution of critics score vs. mpaa_rating")
+p3 <- p3 + labs(x = "MPAA rating", y = "Density")
+
+p4 <- ggplot(mov, aes(critics_score, fill = best_pic_nom))
+p4 <- p4 + geom_density (alpha = 0.2) + labs(title = "Distribution of critics score vs. best_pic_nom") 
+p4 <- p4 + labs(x = "Best movie nomination", y = "Density")
+
+p5 <- ggplot(mov, aes(critics_score, fill = best_pic_win))
+p5 <- p5 + geom_density (alpha = 0.2) + labs(title = "Distribution of critics score vs. best_pic_win") 
+p5 <- p5 + labs(x = "Best movie winner", y = "Density")
+
+p6 <- ggplot(mov, aes(critics_score, fill = best_actor_win))
+p6 <- p6 + geom_density (alpha = 0.2) + labs(title = "Distribution of critics score vs. best_actor_win") 
+p6 <- p6 + labs(x = "Best actor winner", y = "Density")
+
+p7 <- ggplot(mov, aes(critics_score, fill = best_actress_win))
+p7 <- p7 + geom_density (alpha = 0.2) + labs(title = "Distribution of critics score vs. best_actress win") 
+p7 <- p7 + labs(x = "Best actress nomination", y = "Density")
+
+p8 <- ggplot(mov, aes(critics_score, fill = best_dir_win))
+p8 <- p8 + geom_density (alpha = 0.2) + labs(title = "Distribution of critics score vs. best_dir_win") 
+p8 <- p8 + labs(x = "Best director nomination", y = "Density")
+
+p9 <- ggplot(mov, aes(critics_score, fill = top200_box))
+p9 <- p9 + geom_density (alpha = 0.2) + labs(title = "Distribution of critics score vs. top200_box") 
+p9 <- p9 + labs(x = "Top 200 Box Office list", y = "Density")
+
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8, p9,  ncol = 2)
+
+```
+
+Let's plot the audience_score, against the candidates for explanatory variables
+
+```{r}
+p1 <- ggplot(mov, aes(audience_score, fill = title_type))
+p1 <- p1 + geom_density (alpha = 0.2) + labs(title = "Distribution of audience score vs. title_type") 
+p1 <- p1 + labs(x = "title_type", y = "Density")
+
+p2 <- ggplot(mov, aes(audience_score, fill = genre))
+p2 <- p2 + geom_density (alpha = 0.2) + labs(title = "Distribution of audience score vs. genre") 
+p2 <- p2 + labs(x = "Genre", y = "Density")
+
+p3 <- ggplot(mov, aes(audience_score, fill = mpaa_rating))
+p3 <- p3 + geom_density (alpha = 0.2) + labs(title = "Distribution of audience score vs. mpaa_rating")
+p3 <- p3 + labs(x = "MPAA rating", y = "Density")
+
+p4 <- ggplot(mov, aes(audience_score, fill = best_pic_nom))
+p4 <- p4 + geom_density (alpha = 0.2) + labs(title = "Distribution of audience score vs. best_pic_nom") 
+p4 <- p4 + labs(x = "Best movie nomination", y = "Density")
+
+p5 <- ggplot(mov, aes(audience_score, fill = best_pic_win))
+p5 <- p5 + geom_density (alpha = 0.2) + labs(title = "Distribution of audience score vs. best_pic_win") 
+p5 <- p5 + labs(x = "Best movie winner", y = "Density")
+
+p6 <- ggplot(mov, aes(audience_score, fill = best_actor_win))
+p6 <- p6 + geom_density (alpha = 0.2) + labs(title = "Distribution of audience score vs. best_actor_win") 
+p6 <- p6 + labs(x = "Best actor winner", y = "Density")
+
+p7 <- ggplot(mov, aes(audience_score, fill = best_actress_win))
+p7 <- p7 + geom_density (alpha = 0.2) + labs(title = "Distribution of audience score vs. best_actress win") 
+p7 <- p7 + labs(x = "Best actress nomination", y = "Density")
+
+p8 <- ggplot(mov, aes(audience_score, fill = best_dir_win))
+p8 <- p8 + geom_density (alpha = 0.2) + labs(title = "Distribution of audience score vs. best_dir_win") 
+p8 <- p8 + labs(x = "Best director nomination", y = "Density")
+
+p9 <- ggplot(mov, aes(audience_score, fill = top200_box))
+p9 <- p9 + geom_density (alpha = 0.2) + labs(title = "Distribution of audience score vs. top200_box") 
+p9 <- p9 + labs(x = "Top 200 Box Office list", y = "Density")
+
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8, p9,  ncol = 2)
+
+```
+
+The plots show different features compared to the audience score. 
+One can see that certain features will certainly contribute better 
+(i.e genre, title_type and expecially best movie winner) to the model 
+then others. At a first glance it seems that the same variables affects in the
+same way the three different scores
+
+
+## 4. Modeling
+
+We will start now building models for each of the three score variables, using the
+backward selection method. We will add all the explanatory variables and then
+take away one at the time until we find the model with the best Adjusted R square
+value. The method is quite tedious so we will give here directly the end result,
+and we show the model for only the IMDB score. The process for building a model
+for the other two scores of Rotten Tomatoes would be identical.
+
+Model for IMDB score prediction:
+
+```{r}
+m_imdb_score <- lm(imdb_rating ~ genre + best_pic_nom + best_dir_win + mpaa_rating
++ top200_box + title_type, data = mov)
+
+summary(m_imdb_score)
+```
+
+Which gives us an adjusted R squared of 0.2941.
+Let's check that the three condition for building a linear model are met:
+
+```{r}
+## **Linearity**
+  
+  ggplot(data = m_imdb_score, aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Fitted values") +
+  ylab("Residuals")
+
+## **Nearly normal residuals**
+
+ggplot(data = m_imdb_score, aes(x = .resid)) +
+  geom_histogram() +
+  xlab("Residuals")
+
+## or a normal probability plot of the residuals.
+
+ggplot(data = m_imdb_score, aes(sample = .resid)) +
+  stat_qq() +
+  stat_qq_line()
+```	
+* * *
+
+We can see from the above three plots that the conditions are met well enough
+to let us trust our model and try to make a prediction:
+- the residuals are scattered randomly around 0 for all features
+- the residuals display a nearly normal distribution centred around 0
+- the residuals have almost equal variability, with exceptions for low scores
+	and for very high scores.
+
+## 5. Prediction
+
+We pick up a movie from year 2016 from the IMDB database and check if our model's
+prediction is in accordance with the real score.
+We pick up the movie "La la land" and fill the data in a data frame.
+
+```{r}
+prediction <- data.frame( genre = 'Musical & Performing Arts',
+				  title_type = 'Feature Film',
+				  imdb_rating = '8.0',
+				  top200_box = 'yes',
+				  best_pic_nom = 'yes',
+				  best_dir_win = 'yes',
+				  mpaa_rating = 'PG-13')
+
+predict(m_imdb_score, prediction, interval = "prediction", level = 0.95)
+
+# Error in percent  
+Error_in_percent = round(100 - (round(9.05, 2) * 100 / 8.0), 2)
+Error_in_percent				
+```	
+
+The predicted value is 9.05 which is higher than the actual score of 8.0,
+and, based on the confidence interval, we can be 95% confident that the actual 
+score for this particular movie has a lower bound of approximately 7.07 and a 
+higher bound of approximately 11.03.
+The calculated Error between the real score (8.0) and predicted score (9.05) is
+about 13%.
+
+* * *
+
+## 6. Conclusions
+
+In this project we built a model to predict IMDB scores for a movie. The final 
+parsimonious model was built with 'backward elimination' method applied to 
+adjusted R squared value, manually.
+The model is built on a small sample of around 650 movie entries and the 
+prediction it gave for our test movie was not so good, with an error of 13%.
+
+We have chosen a difficult test movies as there are not so many movies with 
+genre = 'Musial' in the dataset. Actually for many genres there are very few 
+movies, only dramas are well represented (about 50% of the dataset). 
+So in order to make better predictions we should collect more movies
+in every genre category.
+
+
