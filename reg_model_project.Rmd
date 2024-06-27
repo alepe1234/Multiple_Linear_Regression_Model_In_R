@@ -40,18 +40,18 @@ The data set comprises 651 randomly sampled movies produced and released before
 on https://www.rottentomatoes.com/ and https://www.imdb.com/.
 
 Description (source rotten tomatoe's website) Rotten Tomatoes and the Tomatometer
-score are the worldís most trusted recommendation resources for quality 
+score are the world‚Äôs most trusted recommendation resources for quality 
 entertainment. As the leading online aggregator of movie and TV show reviews 
-from critics, we provide fans with a comprehensive guide to whatís Fresh ñ and
-whatís Rotten ñ in theaters and at home. And the Tomatometer is just the 
+from critics, we provide fans with a comprehensive guide to what‚Äôs Fresh ‚Äì and
+what‚Äôs Rotten ‚Äì in theaters and at home. And the Tomatometer is just the 
 beginning. We also serve movie and TV fans with original editorial content on
 our site and through social channels, produce fun and informative video series,
-and hold live events for fans across the country, with our ëYour Opinion Sucksí 
-live shows. If youíre an entertainment fan looking for a recommendation, or to
-share an opinion, youíve come to the right place. 
+and hold live events for fans across the country, with our ‚ÄòYour Opinion Sucks‚Äô 
+live shows. If you‚Äôre an entertainment fan looking for a recommendation, or to
+share an opinion, you‚Äôve come to the right place. 
 
-The Tomatometer score ñ based on the opinions of hundreds of film and 
-television critics ñ is a trusted measurement of critical recommendation for 
+The Tomatometer score ‚Äì based on the opinions of hundreds of film and 
+television critics ‚Äì is a trusted measurement of critical recommendation for 
 millions of fans.
 Certified Fresh status is a special distinction awarded to the best-reviewed 
 movies and TV shows. In order to qualify, movies or TV shows must have a 
@@ -60,13 +60,13 @@ When at least 60% of reviews for a movie or TV show are positive, a red tomato
 is displayed to indicate its Fresh status. 
 When less than 60% of reviews for a movie or TV show are positive, a green 
 splat is displayed to indicate its Rotten status.
-When there is no TomatometerÆ score available, which could be because the 
-Title hasnít released yet or there are not enough ratings to generate a score. 
+When there is no Tomatometer¬Æ score available, which could be because the 
+Title hasn‚Äôt released yet or there are not enough ratings to generate a score. 
 
 The Audience Score, denoted by a popcorn bucket, represents the percentage of
 users who have rated a movie or TV show positively. With films for which we 
 can verify users have bought a ticket, the default Audience Score we show is 
-made up of ìVerified Ratings,î which represents the percentage of users who 
+made up of ‚ÄúVerified Ratings,‚Äù which represents the percentage of users who 
 have rated a movie or TV show positively who we can verify bought a ticket; it
 is displayed once enough of those Verified Ratings are in to form a score.
 When at least 60% of users give a movie or TV show a star rating of 3.5 or 
@@ -75,11 +75,11 @@ When less than 60% of users give a movie or TV show a star rating of 3.5 or
 higher, a tipped over popcorn bucket is displayed to indicate its Rotten 
 status.
 When there is no Audience Score available, which could be because the Title 
-hasnít released yet or there are not enough ratings to generate a score. 
+hasn‚Äôt released yet or there are not enough ratings to generate a score. 
 
 Description (source IMDB website):
 IMDb started in 1990 as a hobby project by an international group of movie and
-TV fans. IMDb is now the world‚Äôs most popular and authoritative source for 
+TV fans. IMDb is now the world√¢‚Ç¨‚Ñ¢s most popular and authoritative source for 
 movie, TV and celebrity content.
 
 The information in IMDb comes from various sources. While they actively gather
@@ -159,6 +159,24 @@ We see that the original database contained 651 rows and 32 columns, now we have
 reduced the columns to 13, but the number of rows is still 651. So the columns we
 have chosen to include in the study didn't have any missing value.
 
+By running the command table on each variable, we see that some of the variable
+that we feel have a direct influence on the score, are not uniformly represented
+on each of the category. For example the following:
+
+```{r}
+table(mov$title_type)
+
+ Documentary Feature Film     TV Movie 
+          55          591            5 
+
+## Nearly all the entries are Feature Films
+
+table(mov$genre)
+
+## Drama has over 305 entries, Science Finction & Fantasy has the minimum of 9
+```
+It seems that this database is not going to be good enough for making prediction
+in other genres that Drama and title_type than Feature Film
 
 ## 3 Exploratory data analysis
 
@@ -384,7 +402,35 @@ to let us trust our model and try to make a prediction:
 
 We pick up a movie from year 2016 from the IMDB database and check if our model's
 prediction is in accordance with the real score.
-We pick up the movie "La la land" and fill the data in a data frame.
+We chose the movie "Arrival", which is in the over represented Drama category,
+and we should be able to give a good prediction for it:
+
+```{r}
+prediction <- data.frame( genre = 'Drama',
+				  title_type = 'Feature Film',
+				  imdb_rating = '7.9',
+				  top200_box = 'yes',
+				  best_pic_nom = 'yes',
+				  best_dir_win = 'no',
+				  mpaa_rating = 'PG-13')
+
+predict(m_imdb_score, prediction, interval = "prediction", level = 0.95)
+
+# Error in percent  
+Error_in_percent = round(100 - (round(8.17, 2) * 100 / 7.9), 2)
+Error_in_percent				
+```	
+The predicted value is 8.17 which is higher but quite close to the actual score 
+of 7.9 and, based on the confidence interval, we can be 95% confident that the 
+actual score for this particular movie has a lower bound of approximately 6.28 
+and a higher bound of approximately 10.06.
+The calculated Error between the real score (7.9) and predicted score (8.17) is
+about 3.4% which is quite low, the model works quite well for movies in the
+most represented Drama category.
+
+We pick up next the movie "La la land" and fill the data in a data frame. This is in
+a genre category that is under-represented, we are quite sure the prediction
+will not be so accurate. Let's check it.
 
 ```{r}
 prediction <- data.frame( genre = 'Musical & Performing Arts',
@@ -416,12 +462,17 @@ about 13%.
 In this project we built a model to predict IMDB scores for a movie. The final 
 parsimonious model was built with 'backward elimination' method applied to 
 adjusted R squared value, manually.
-The model is built on a small sample of around 650 movie entries and the 
-prediction it gave for our test movie was not so good, with an error of 13%.
+The model is built on a small sample of around 650 movie entries and tthey were
+classified in genre and in movie type, but one category of each was over
+represented, while very few entries were present in all the other categories,
+this gives rise to a model that works well only for movies in the over
+represented categories. We tested this by chosing a movie in the
+Drama and one in the Musical category.
 
-We have chosen a difficult test movies as there are not so many movies with 
-genre = 'Musial' in the dataset. Actually for many genres there are very few 
-movies, only dramas are well represented (about 50% of the dataset). 
+The prediction it gave for our test movie in the over represented Drama category
+was quite good, with only a 3.5% error, while the other test movie choosed on
+purpose in an under represented category was not so good, with an error of 13%.
+
 So in order to make better predictions we should collect more movies
 in every genre category.
 
